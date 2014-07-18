@@ -1,20 +1,98 @@
 # Reproducible Research: Peer Assessment 1
-
+# By Ron Chua
 
 ## Loading and preprocessing the data
 
+We are Downloading, extracting and storing the **activity** data into a data frame. 
+Format the **Date field to Date Type** and sample the values to be able to understand the Activity data.
 
+```{r}
+fileUrl <- "https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2Factivity.zip"
+download.file(fileUrl, destfile = "Dataset.zip", method = "curl")
+unzip("Dataset.zip")
+activity <- read.csv("./activity.csv")
+activity$date <- as.Date(activity$date)
+head(activity)
+summary(activity)
+```
 
 ## What is mean total number of steps taken per day?
 
+This is a histogram of the total number of steps taken **each** day.
 
+
+```{r}
+library(ggplot2)
+q<-qplot(date, weight=activity$steps, data=activity, geom="histogram")  + geom_bar(fill="#FF9999", colour="blue")
+print(q)
+```
+
+Calculation of the mean and median total number of steps taken **per** day:
+
+```{r}
+mean(tapply(activity$steps, activity$date, sum, na.rm = TRUE))
+median(tapply(activity$steps, activity$date, sum, na.rm = TRUE))
+```
 
 ## What is the average daily activity pattern?
 
+A **Time Series** plot of the 5-minute interval and the average number of steps taken that are averaged across all days.
 
+```{r}
+average_steps<-data.frame(cbind(activity$interval,tapply(activity$steps, activity$interval, mean, na.rm = TRUE)))
+colnames(average_steps) <- c("interval","steps")
+q<-ggplot(data=average_steps,aes(x=interval,y=steps)) +
+  geom_line(colour="#000099")
+print(q)
+```
+
+Five minute interval that contains the maximum number of steps across all the days in the dataset.
+
+```{r}
+maxtime<-average_steps[which.max(average_steps$steps),"interval"]
+strftime( as.POSIXct(Sys.Date()) + as.difftime(round(maxtime/100), units="hours")+ as.difftime(maxtime%%100, units="mins"), "%r",tz="UTC")
+```
 
 ## Imputing missing values
 
+Total number of  **NA's** in the dataset.
 
+```{r}
+sum(is.na(activity$steps))
+```
+
+The mean for five minute interval, to replacing the missing values.
+
+```{r}
+fixed<-activity
+fixed[is.na(fixed[, 1]), 1]<-average_steps[is.na(fixed[, 1]),2]
+```
+
+The histogram of the new dataset, with the NAs replaced with the five  minute means.
+
+```{r}
+qplot(date, weight=fixed$steps, data=fixed, geom="histogram") + geom_bar(fill="green", colour="blue")
+```
+
+Report the mean and media values. 
+The observations has higher values.  As seen in the graph above. The increased number of mean of steps, 
+and have NAs have been replaced by the five minute interval mean.
+
+```{r}
+mean(tapply(fixed$steps, fixed$date, sum, na.rm = TRUE))
+median(tapply(fixed$steps, fixed$date, sum, na.rm = TRUE))
+```
 
 ## Are there differences in activity patterns between weekdays and weekends?
+
+Adding **Weekend  or  Weekday** to a new field.
+
+```{r}
+library(lattice)
+fixed$day<-as.factor(ifelse(weekdays(fixed$date) %in% c("Saturday","Sunday"),"Weekend","Weekday"))
+```
+
+Plot the five minute average of steps, by weekday/weekend.
+
+```{r}
+xyplot(steps ~ interval | day, aggregate(steps ~ interval + day, fixed, FUN = mean), layout = c(1, 2), type = "l", group=day)
