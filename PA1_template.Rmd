@@ -1,5 +1,5 @@
 # Reproducible Research: Peer Assessment 1
-# By Ron Chua
+# By Ron Chua 
 
 ## Loading and preprocessing the data
 
